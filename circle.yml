@@ -1,0 +1,28 @@
+machine:
+  services:
+    - docker
+  python:
+    version: 2.7
+  environment:
+    IMAGE_NAME: "test_mysql"
+
+dependencies:
+  pre:
+    - pip install behave ansible
+    - git clone https://github.com/vrutkovs/ctf-cli.git ../ctf-cli
+  override:
+    - docker info
+    - if [[ -e ~/docker/ctf.tar ]]; then docker load -i ~/docker/ctf.tar; fi
+    - docker build -t $IMAGE_NAME .
+    - if [[ ! -e ~/docker/ctf.tar ]]; then mkdir -p ~/docker; docker save -o ~/docker/ctf.tar $IMAGE_NAME; fi
+
+checkout:
+  post:
+    - git submodule sync
+    - git submodule update --init
+    - rm -rf .git  # Don't let CircleCI cache submodules
+
+test:
+  override:
+    - mkdir -p $CIRCLE_TEST_REPORTS/junit/
+    - ../ctf-cli/ctf-cli.py run -v -i $IMAGE_NAME --junit $CIRCLE_TEST_REPORTS/junit/
